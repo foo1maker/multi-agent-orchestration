@@ -1,0 +1,7 @@
+interface:
+  display_name: "Multi-Agent Orchestration"
+  short_description: "Run native Codex multi-agent work with disciplined delegation"
+  default_prompt: "Use $multi-agent-orchestration for this native parallel multi-agent task."
+
+policy:
+  allow_implicit_invocation: true
