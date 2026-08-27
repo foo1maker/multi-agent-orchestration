@@ -32,8 +32,17 @@ Brain validates.
 ## Delegation Decision
 
 - Keep simple tasks single-agent. Do not spawn to reach an agent count.
-- Brain may directly finish work it can complete quickly when parallelism adds
-  no meaningful value.
+- Parallelism determines whether independent Workers should run concurrently;
+  it is not a prerequisite for delegation. Small, bounded work—a few read-only
+  checks, light validation, or trivial execution—may remain with Brain. But
+  substantial execution should normally be delegated even when the work is
+  sequential.
+- Substantial execution includes, but is not limited to: multi-file creation or
+  modification, batch file operations, longer command chains, artifact
+  packaging, Git staging/commit/push workflows, external sync (Drive, cloud),
+  batch checksum or hash verification, data transforms, broad tests, and any
+  large volume of deterministic commands. Brain judges substantiality from
+  context, not from fixed file counts or time thresholds.
 - Delegate substantial, independent work with clear execution or review value.
   Large work should not be retained by Brain solely to avoid delegation.
 - Do not skip validation merely to reduce cost. Brain may decide another round

@@ -23,6 +23,7 @@ child lifecycle, whose observed states may include `running`, `interrupted`,
 ```text
 Stage 1: Worker Settlement
 Stage 2: Validate evidence, artifacts, tests, and critical claims
+Remaining-work check: determine whether substantial execution is still required
 Stage 3: Decide whether the original objective is satisfied
 ```
 
@@ -32,6 +33,13 @@ and then makes the Stage 3 decision for the original user objective.
 Stage 2 checks the evidence proportional to risk: inspect the claimed artifact,
 run focused tests, or verify critical claims. It does not reproduce the entire
 delegated workflow unless reproduction is itself required by acceptance.
+
+Before Stage 3 completion, Brain reassesses the remaining work. If substantial
+execution remains—for example, file organisation, Git staging/commit/push,
+external sync, or batch verification—Brain should create a new scoped Task
+Contract and delegate it rather than absorbing that execution into validation.
+Brain may directly perform bounded validation and trivial execution without
+spawning a Worker.
 
 If evidence is incomplete, use the recovery rules in
 [lifecycle_and_recovery.md](lifecycle_and_recovery.md). Preserve uncertainty and
