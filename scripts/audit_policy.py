@@ -14,7 +14,12 @@ REQUIRED_SKILL_GROUPS = {
     "native_only": ("Codex native runtime", "scheduler", "watchdog"),
     "task_contract": ("Task Contract", "raw-forward"),
     "non_duplication": ("must not secretly repeat",),
-    "wait_semantics": ("ANY-child", "Wait timed out."),
+    "wait_semantics": (
+        "ANY-child",
+        "Wait timed out.",
+        "quiescent wait",
+        "not a reason to create work",
+    ),
     "running_immunity": ("failure evidence", "progress inspection"),
     "result_validation": ("RESULT_PACKET STATUS", "Stage 2", "Stage 3"),
     "interrupt_boundary": ("interrupt_agent", "hard deadline"),
@@ -22,6 +27,8 @@ REQUIRED_SKILL_GROUPS = {
         "deepseek-v4-flash:0731",
         "`max` reasoning",
         "supports `max`, not `xhigh`",
+        "gemini-3.7-flash-high",
+        "grok-4.6",
         "explicit user model or reasoning choice",
     ),
 }

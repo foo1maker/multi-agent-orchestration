@@ -27,9 +27,9 @@ artifact generation, tests, and deterministic queries. Once the next concrete
 action is clear, execute it. If a new scientific, architectural, or permission
 decision is required, return a structured `BLOCKED` result to Brain.
 
-**ANALYSIS** covers source understanding, scientific judgment, literature
-comparison, architecture, and complex reasoning. Deliver key results, evidence,
-and limitations without expanding scope.
+**ANALYSIS** covers source understanding, literature comparison, data exploration,
+and local analytical reasoning. The Worker delivers key results, evidence, and
+limitations; project-level scientific judgment and final ranking remain with Brain.
 
 **REVIEW** is read-only unless Brain explicitly authorizes edits. Reviewers and
 inspectors do not modify the object they are assessing by default.

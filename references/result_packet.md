@@ -23,21 +23,54 @@ child lifecycle, whose observed states may include `running`, `interrupted`,
 ```text
 Stage 1: Worker Settlement
 Stage 2: Validate evidence, artifacts, tests, and critical claims
+Brain Scientific Synthesis: synthesize evidence and make project-level judgment
 Remaining-work check: determine whether substantial execution is still required
 Stage 3: Decide whether the original objective is satisfied
 ```
 
-Worker success is not task completion. Brain performs Stage 2 after settlement
-and then makes the Stage 3 decision for the original user objective.
+Worker success is not task completion. Brain performs Stage 2 after settlement,
+personally conducts scientific synthesis, and then makes the Stage 3 decision for
+the original user objective.
 
 Stage 2 checks the evidence proportional to risk: inspect the claimed artifact,
-run focused tests, or verify critical claims. It does not reproduce the entire
+run focused tests, or verify critical claims. It does not redo the entire
 delegated workflow unless reproduction is itself required by acceptance.
+Mechanical artifact checks (such as file existence, row counts, JSON parsing, and
+schema checks) can be delegated or spot-checked so Brain reserves its reasoning
+budget for scientific judgment.
 
-Before Stage 3 completion, Brain reassesses the remaining work. If substantial
-execution remains—for example, file organisation, Git staging/commit/push,
-external sync, or batch verification—Brain should create a new scoped Task
-Contract and delegate it rather than absorbing that execution into validation.
+### Brain Scientific Synthesis
+
+Scientific judgment is Brain-owned and must not be delegated. A Worker-generated
+score, ranking, or recommendation is evidence, not a final decision. Brain must
+not lock a scientific ranking solely because a Worker score table ordered
+candidates in that way.
+
+Before locking any major conclusion, ranking, route change, or delegating final
+packaging, Brain must personally evaluate:
+1. Which evidence matters most, and which is weak, biased, heterogeneous, or
+   potentially misleading?
+2. Does benchmark performance actually support the intended downstream use, or is
+   a candidate merely technically easier to execute rather than scientifically better?
+3. What is the strongest alternative explanation, and why does the preferred option
+   beat nearest alternatives?
+4. What realistic uncertainty could reverse this decision?
+
+Brain records a concise decision rationale (decision, supporting evidence, key
+weakness/trade-off, alternative comparison, confidence/uncertainty) without exposing
+raw chain-of-thought.
+
+### Packaging and Remaining Work
+
+Before Stage 3 completion, Brain reassesses remaining work. If substantial execution
+remains—such as formatting, figure generation, README/RUN_SUMMARY creation, packaging,
+Git staging/commit/push, or external sync—Brain should delegate it to a packaging
+Worker.
+
+A packaging Worker may format and assemble Brain-approved conclusions, but must not
+independently set or reinterpret the scientific ranking. Brain may provide the
+approved ranking and rationale to the Worker for faithful packaging.
+
 Brain may directly perform bounded validation and trivial execution without
 spawning a Worker.
 
