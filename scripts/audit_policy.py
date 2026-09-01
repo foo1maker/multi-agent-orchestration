@@ -25,8 +25,8 @@ REQUIRED_SKILL_GROUPS = {
     "interrupt_boundary": ("interrupt_agent", "hard deadline"),
     "worker_default": (
         "deepseek-v4-flash:0731",
-        "`max` reasoning",
-        "supports `max`, not `xhigh`",
+        "`high` reasoning",
+        "never `max`",
         "gemini-3.7-flash-high",
         "grok-4.6",
         "explicit user model or reasoning choice",
