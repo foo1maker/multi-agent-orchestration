@@ -24,8 +24,9 @@ REQUIRED_SKILL_GROUPS = {
     "result_validation": ("RESULT_PACKET STATUS", "Stage 2", "Stage 3"),
     "interrupt_boundary": ("interrupt_agent", "hard deadline"),
     "worker_default": (
-        "deepseek-v4-flash:0731",
-        "`high` reasoning",
+        "glm-5.3-flash",
+        "`max` reasoning",
+        "1M-context",
         "never `max`",
         "gemini-3.7-flash-high",
         "grok-4.6",

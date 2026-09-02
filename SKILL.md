@@ -84,15 +84,14 @@ or `file_system`; read skill files with the native shell (`Get-Content
 Root keeps the user's selected model and reasoning effort. Model routing for
 subagents is:
 
-- Ordinary Worker, Explorer, and Reviewer tasks default to
-  `deepseek-v4-flash:0731` with `high` reasoning unless the user explicitly
-  specifies another model or reasoning value for the task. That id is the
-  text-only DS Ollama route; do not send it image input.
-- The DS Ollama route for `deepseek-v4-flash:0731` supports `max`/`high`/
-  `medium`/`low`, not `xhigh` or `ultra`. Default workers use `high`. Do not
-  pass `max` unless the user explicitly asked for max, and do not request
-  `xhigh` for that model.
-- If `deepseek-v4-flash:0731` is unavailable or unsuitable, fall back to
+- Ordinary Worker, Explorer, and Reviewer tasks default to `glm-5.3-flash`
+  with `max` reasoning unless the user explicitly specifies another model or
+  reasoning value for the task. That id is the text-only GLM 1M-context route;
+  do not send it image input.
+- The GLM route for `glm-5.3-flash` supports `max`/`high`/`medium`/`low`, not
+  `xhigh` or `ultra`. Default workers use `max`. Do not request `xhigh` for
+  that model.
+- If `glm-5.3-flash` is unavailable or unsuitable, fall back to
   `gemini-3.7-flash-high`, then `grok-4.6`. Spawn those fallbacks with `high`
   or `xhigh`, never `max`.
 - Tasks requiring image, scanned-document, visual-page, screenshot, or other
@@ -109,17 +108,16 @@ independent, read-only, clean-context check.
 An explicit user model or reasoning choice overrides these defaults only for the
 task where it was requested and only when the `spawn_agent` schema supports that
 override. Without an explicit override, do not silently substitute another model
-for `deepseek-v4-flash:0731` on ordinary tasks, and do not silently
-substitute `deepseek-v4-flash:0731` for multimodal work. When the schema allows
-`reasoning_effort`, pass the per-model value explicitly so workers do not inherit
-a parent or global `max`. When another model is selected, use a reasoning
-effort supported by that model/provider rather than copying a DS `max` setting.
-If a spawn is rejected because the effort is unsupported for that model,
-re-issue it once on the same model with a supported effort. Do not bounce back
-to DS solely because a fallback rejected `max`. Parallel spawning of independent
-Workers is allowed; only a runtime-confirmed spawn result counts as a live
-Worker, and a rejected wrapper call is re-issued as individual `spawn_agent`
-calls.
+for `glm-5.3-flash` on ordinary tasks, and do not silently substitute
+`glm-5.3-flash` for multimodal work. When the schema allows `reasoning_effort`,
+pass the per-model value explicitly so fallbacks do not inherit a parent or
+global `max`. When another model is selected, use a reasoning effort supported
+by that model/provider rather than copying the GLM `max` setting. If a spawn is
+rejected because the effort is unsupported for that model, re-issue it once on
+the same model with a supported effort. Do not bounce back to GLM solely
+because a fallback rejected `max`. Parallel spawning of independent Workers is
+allowed; only a runtime-confirmed spawn result counts as a live Worker, and a
+rejected wrapper call is re-issued as individual `spawn_agent` calls.
 
 Task names use lowercase letters, digits, and underscores. Prefer a clean Worker
 context; inherit only the context the contract actually needs.
