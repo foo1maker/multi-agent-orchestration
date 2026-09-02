@@ -86,8 +86,8 @@ subagents is:
 
 - Ordinary Worker, Explorer, and Reviewer tasks default to `glm-5.3-flash`
   with `max` reasoning unless the user explicitly specifies another model or
-  reasoning value for the task. That id is the text-only GLM 1M-context route;
-  do not send it image input.
+  reasoning value for the task. That id is the GLM 1M-context route and accepts
+  image input.
 - The GLM route for `glm-5.3-flash` supports `max`/`high`/`medium`/`low`, not
   `xhigh` or `ultra`. Default workers use `max`. Do not request `xhigh` for
   that model.
@@ -95,10 +95,11 @@ subagents is:
   `gemini-3.7-flash-high`, then `grok-4.6`. Spawn those fallbacks with `high`
   or `xhigh`, never `max`.
 - Tasks requiring image, scanned-document, visual-page, screenshot, or other
-  multimodal input select a multimodal-capable model based on the task, with
-  `gemini-3.7-flash-high` as the default and `grok-4.6` as fallback.
-- Do not retry a confirmed multimodal compatibility failure with another
-  text-only model.
+  multimodal input also default to `glm-5.3-flash`. If it is unavailable or a
+  confirmed multimodal compatibility failure occurs, fall back to
+  `gemini-3.7-flash-high`, then `grok-4.6`.
+- Do not retry a confirmed multimodal compatibility failure with a text-only
+  model.
 
 Use a clean or bounded fork when setting a model override because full-history
 forks inherit the parent model and do not accept overrides. Reviewer Workers are
@@ -108,10 +109,10 @@ independent, read-only, clean-context check.
 An explicit user model or reasoning choice overrides these defaults only for the
 task where it was requested and only when the `spawn_agent` schema supports that
 override. Without an explicit override, do not silently substitute another model
-for `glm-5.3-flash` on ordinary tasks, and do not silently substitute
-`glm-5.3-flash` for multimodal work. When the schema allows `reasoning_effort`,
-pass the per-model value explicitly so fallbacks do not inherit a parent or
-global `max`. When another model is selected, use a reasoning effort supported
+for `glm-5.3-flash` on ordinary or multimodal tasks. When the schema allows
+`reasoning_effort`, pass the per-model value explicitly so fallbacks do not
+inherit a parent or global `max`. When another model is selected, use a
+reasoning effort supported
 by that model/provider rather than copying the GLM `max` setting. If a spawn is
 rejected because the effort is unsupported for that model, re-issue it once on
 the same model with a supported effort. Do not bounce back to GLM solely
