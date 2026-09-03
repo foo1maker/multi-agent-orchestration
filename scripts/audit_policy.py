@@ -13,6 +13,12 @@ REQUIRED_SKILL_GROUPS = {
     "architecture": ("Brain thinks.", "Worker executes.", "Brain validates."),
     "native_only": ("Codex native runtime", "scheduler", "watchdog"),
     "task_contract": ("Task Contract", "raw-forward"),
+    "discovery_bootstrap": (
+        "TASK_MODE: EXECUTION | DISCOVERY | ANALYSIS | REVIEW",
+        "DISCOVERY ROOTS",
+        "bounded `DISCOVERY` contract",
+        "execution-level reconnaissance",
+    ),
     "non_duplication": ("must not secretly repeat",),
     "wait_semantics": (
         "ANY-child",

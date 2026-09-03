@@ -50,6 +50,14 @@ Brain validates.
   thresholds. Brain preferentially spends its own reasoning budget on scientific
   synthesis and decision-making rather than mechanical artifact validation that
   a worker can perform reliably.
+- Pre-spawn reconnaissance is not exempt from delegation. Brain may read only
+  the minimum already-named control-plane facts needed to define the objective,
+  authority boundary, permissions, and a bounded first contract. Repository or
+  data-package reconnaissance, path discovery, manifest discovery, schema
+  inspection, broad existence checks, or similar execution-level reconnaissance
+  should not be performed by Brain merely to make a later contract more complete.
+  If those execution facts are unresolved, delegate them as a bounded
+  `TASK_MODE: DISCOVERY` contract.
 - Delegate substantial, independent work with clear execution or review value.
   Large work should not be retained by Brain solely to avoid delegation.
 - Do not skip validation merely to reduce cost. Brain may decide another round
@@ -75,13 +83,18 @@ second Codex runtime from a terminal.
 `mode2` / `Mode 2` / `启动模式2` / `开启模式2` / `使用模式2` is an explicit
 spawn request. After the three references are loaded, the next native call in
 that Mode 2 task must be `spawn_agent`, or `BLOCKED` if the live tool list has
-no `spawn_agent`. Do not emit a user-facing "Mode 2 activated" / "I will spawn"
-message and then end the turn. Writing a contract without calling `spawn_agent`
-in the same turn is a protocol failure. A spawn that uses a full-history fork
-or a prose stub instead of a scoped contract is also a protocol failure: do
-not compensate for an unfinished contract by copying parent history. Do not
-call MCP servers named `codex` or `file_system`; read skill files with the
-native shell (`Get-Content -LiteralPath` on PowerShell).
+no `spawn_agent`. If Brain cannot yet write a normal EXECUTION, ANALYSIS, or
+REVIEW contract because target paths, manifests, schemas, or authoritative
+inputs are unresolved, the first spawn must be a bounded `DISCOVERY` contract.
+Missing execution facts are not permission for Brain to perform substantial
+reconnaissance before the first spawn. Do not emit a user-facing "Mode 2
+activated" / "I will spawn" message and then end the turn. Writing a contract
+without calling `spawn_agent` in the same turn is a protocol failure. A spawn
+that uses a full-history fork or a prose stub instead of a scoped contract is
+also a protocol failure: do not compensate for an unfinished contract by
+copying parent history. Do not call MCP servers named `codex` or `file_system`;
+read skill files with the native shell (`Get-Content -LiteralPath` on
+PowerShell).
 
 Root keeps the user's selected model and reasoning effort. Model routing for
 subagents is:
@@ -137,7 +150,9 @@ assignment is the Task Contract in `message`, not the parent transcript.
 - Never raw-forward the user's long prompt. Brain writes a scoped Task Contract.
   REVIEW/ANALYSIS contracts are deliverable-first (see task_contract.md): name
   the files that already hold counts, hashes, or summaries; do not assign
-  recursive full-content scans of a data package.
+  recursive full-content scans of a data package. `DISCOVERY` is the only mode
+  in which final target paths may still be unresolved; it must use concrete,
+  bounded `DISCOVERY ROOTS`, closed target criteria, and a named deliverable.
 - Scientific judgment is Brain-owned: never delegate the final scientific
   ranking, trade-off choice, or route recommendation to a Worker.
 - Worker rankings and score tables are evidence, not decisions. Brain must not
