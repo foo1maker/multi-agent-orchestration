@@ -77,9 +77,11 @@ spawn request. After the three references are loaded, the next native call in
 that Mode 2 task must be `spawn_agent`, or `BLOCKED` if the live tool list has
 no `spawn_agent`. Do not emit a user-facing "Mode 2 activated" / "I will spawn"
 message and then end the turn. Writing a contract without calling `spawn_agent`
-in the same turn is a protocol failure. Do not call MCP servers named `codex`
-or `file_system`; read skill files with the native shell (`Get-Content
--LiteralPath` on PowerShell).
+in the same turn is a protocol failure. A spawn that uses a full-history fork
+or a prose stub instead of a scoped contract is also a protocol failure: do
+not compensate for an unfinished contract by copying parent history. Do not
+call MCP servers named `codex` or `file_system`; read skill files with the
+native shell (`Get-Content -LiteralPath` on PowerShell).
 
 Root keeps the user's selected model and reasoning effort. Model routing for
 subagents is:
@@ -101,10 +103,17 @@ subagents is:
 - Do not retry a confirmed multimodal compatibility failure with a text-only
   model.
 
-Use a clean or bounded fork when setting a model override because full-history
-forks inherit the parent model and do not accept overrides. Reviewer Workers are
-read-only. Use an Inspector only when a formal-task acceptance risk justifies an
-independent, read-only, clean-context check.
+Every `spawn_agent` call must use a clean Worker context and explicit model
+routing. When the live schema exposes `fork_turns`, pass `none`. If it uses
+another name for a clean or bounded fork, pass that clean value. Full-history
+fork (`all` or equivalent) is a protocol failure: it copies the parent
+conversation and parent model, and model overrides do not apply. Put needed
+paths and facts in the Task Contract `message`; do not rely on parent history.
+
+When the schema exposes `model` and `reasoning_effort`, pass both on every
+spawn using the routing above. Omitting them inherits the parent model.
+Reviewer Workers are read-only. Use an Inspector only when a formal-task
+acceptance risk justifies an independent, read-only, clean-context check.
 
 An explicit user model or reasoning choice overrides these defaults only for the
 task where it was requested and only when the `spawn_agent` schema supports that
@@ -120,12 +129,15 @@ because a fallback rejected `max`. Parallel spawning of independent Workers is
 allowed; only a runtime-confirmed spawn result counts as a live Worker, and a
 rejected wrapper call is re-issued as individual `spawn_agent` calls.
 
-Task names use lowercase letters, digits, and underscores. Prefer a clean Worker
-context; inherit only the context the contract actually needs.
+Task names use lowercase letters, digits, and underscores. The Worker
+assignment is the Task Contract in `message`, not the parent transcript.
 
 ## Operating Boundaries
 
 - Never raw-forward the user's long prompt. Brain writes a scoped Task Contract.
+  REVIEW/ANALYSIS contracts are deliverable-first (see task_contract.md): name
+  the files that already hold counts, hashes, or summaries; do not assign
+  recursive full-content scans of a data package.
 - Scientific judgment is Brain-owned: never delegate the final scientific
   ranking, trade-off choice, or route recommendation to a Worker.
 - Worker rankings and score tables are evidence, not decisions. Brain must not
@@ -134,14 +146,17 @@ context; inherit only the context the contract actually needs.
 - Never infer Worker failure from elapsed time, token use, reasoning duration,
   a wait timeout, or absence of an intermediate artifact.
 - Never poll files, logs, processes, or repeated agent listings to supervise a
-  live Worker. The single empty-set audit after consecutive silent timeouts
-  (see lifecycle_and_recovery.md) reads native lifecycle, not progress.
+  live Worker, except the audits in lifecycle_and_recovery.md: the empty-set
+  `list_agents` check, and the five-minute named-output check.
 - Never enter quiescent wait with zero confirmed live Workers; a rejected or
   unconfirmed spawn creates no Worker.
-- Quiescent wait has one bounded exit: after consecutive silent timeouts, one
-  native `list_agents` audit decides between re-waiting and recovery. Waiting
-  on an empty or fully terminal agent set cannot settle.
-- Never interrupt or replace a Worker solely because it appears slow.
+- Quiescent wait has two bounded audits: after two consecutive silent
+  timeouts, one `list_agents` empty-set check; every ~5 minutes of silent
+  wait, one named-output check. Waiting on an empty or fully terminal agent
+  set cannot settle.
+- Never interrupt or replace a Worker solely because it appears slow. User
+  `卡住` is steering: run the named-output check now (lifecycle_and_recovery.md).
+  Do not take over a Worker SCOPE while native status is still `running`.
 - Stage 2 verifies settled evidence and critical artifacts; it does not redo the
   entire delegated workflow unless reproduction is an acceptance requirement.
 
