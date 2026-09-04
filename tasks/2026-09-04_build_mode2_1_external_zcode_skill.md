@@ -1,6 +1,10 @@
 # Task: Build isolated Mode 2.1 external ZCode worker skill
 
-STATUS: APPROVED
+STATUS: ABANDONED / SUPERSEDED_BY_CLEANUP
+SUPERSEDED_BY: tasks/2026-09-04_remove_mode2_1_and_restore_mode2.md
+ABANDONED_NOTE: Mode 2.1 / external-worker experiment abandoned by user decision on
+2026-09-04. This record is historical audit only; it must not participate in routing
+or runtime behavior. Active Mode 2.1 assets were removed by the cleanup task.
 DATE: 2026-09-04
 OWNER: Codex Root / Brain
 EXECUTOR: ZCode
