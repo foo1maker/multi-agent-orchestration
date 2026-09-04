@@ -99,46 +99,52 @@ PowerShell).
 Root keeps the user's selected model and reasoning effort. Model routing for
 subagents is:
 
-- Ordinary Worker, Explorer, and Reviewer tasks default to `glm-5.3-flash`
-  with `max` reasoning unless the user explicitly specifies another model or
-  reasoning value for the task. That id is the GLM 1M-context route and accepts
-  image input.
-- The GLM route for `glm-5.3-flash` supports `max`/`high`/`medium`/`low`, not
-  `xhigh` or `ultra`. Default workers use `max`. Do not request `xhigh` for
-  that model.
-- If `glm-5.3-flash` is unavailable or unsuitable, fall back to
-  `gemini-3.7-flash-high`, then `grok-4.6`. Spawn those fallbacks with `high`
-  or `xhigh`, never `max`.
+- Ordinary Worker, Explorer, and Reviewer tasks default to the Codex host's
+  normal native worker model path: omit the `model`/`reasoning_effort`
+  overrides and inherit the host model unless the user explicitly specifies
+  another model or reasoning value for the task. OBSERVED 2026-09-04: on this
+  host, clean-context (`fork_turns: none`) workers on relay provider models
+  (`glm-5.3-flash`, `gemini-3.7-flash-high`) could not consume the encrypted
+  `NEW_TASK` contract payload and settled without executing the contract,
+  while GPT-5.6-class workers executed identical contracts correctly.
+- If the user explicitly requests a relay-provider worker model
+  (`glm-5.3-flash`, `gemini-3.7-flash-high`, `grok-4.6`), spawn it with a
+  reasoning effort that model supports and treat a settled no-execution or
+  role-inverted result as insufficient evidence under the normal recovery
+  rules; do not silently substitute it as the ordinary default.
+- The GLM route for `glm-5.3-flash`, when explicitly requested, supports
+  `max`/`high`/`medium`/`low`, not `xhigh` or `ultra`. Do not request `xhigh`
+  for that model. Fallbacks spawned at an explicit user request use `high` or
+  `xhigh`, never `max`.
 - Tasks requiring image, scanned-document, visual-page, screenshot, or other
-  multimodal input also default to `glm-5.3-flash`. If it is unavailable or a
+  multimodal input may use `glm-5.3-flash` when explicitly requested. If a
   confirmed multimodal compatibility failure occurs, fall back to
   `gemini-3.7-flash-high`, then `grok-4.6`.
 - Do not retry a confirmed multimodal compatibility failure with a text-only
   model.
 
-Every `spawn_agent` call must use a clean Worker context and explicit model
-routing. When the live schema exposes `fork_turns`, pass `none`. If it uses
+Every `spawn_agent` call must use a clean Worker context. When the live schema
+exposes `fork_turns`, pass `none`. If it uses
 another name for a clean or bounded fork, pass that clean value. Full-history
 fork (`all` or equivalent) is a protocol failure: it copies the parent
 conversation and parent model, and model overrides do not apply. Put needed
 paths and facts in the Task Contract `message`; do not rely on parent history.
 
-When the schema exposes `model` and `reasoning_effort`, pass both on every
-spawn using the routing above. Omitting them inherits the parent model.
+When the schema exposes `model` and `reasoning_effort`, follow the routing
+above: omit both to inherit the host model on ordinary tasks, and pass them
+explicitly when the user requested a specific model or reasoning value.
 Reviewer Workers are read-only. Use an Inspector only when a formal-task
 acceptance risk justifies an independent, read-only, clean-context check.
 
 An explicit user model or reasoning choice overrides these defaults only for the
 task where it was requested and only when the `spawn_agent` schema supports that
-override. Without an explicit override, do not silently substitute another model
-for `glm-5.3-flash` on ordinary or multimodal tasks. When the schema allows
-`reasoning_effort`, pass the per-model value explicitly so fallbacks do not
-inherit a parent or global `max`. When another model is selected, use a
+override. Do not silently substitute a relay-provider model for the host's
+normal worker model path on ordinary tasks. When a user-requested model is
+selected, use a
 reasoning effort supported
-by that model/provider rather than copying the GLM `max` setting. If a spawn is
+by that model/provider rather than copying the host effort. If a spawn is
 rejected because the effort is unsupported for that model, re-issue it once on
-the same model with a supported effort. Do not bounce back to GLM solely
-because a fallback rejected `max`. Parallel spawning of independent Workers is
+the same model with a supported effort. Parallel spawning of independent Workers is
 allowed; only a runtime-confirmed spawn result counts as a live Worker, and a
 rejected wrapper call is re-issued as individual `spawn_agent` calls.
 
