@@ -21,6 +21,7 @@ The skill is intentionally an orchestration policy, not a custom scheduler. It d
 - explicit Mode 2 activation and delegation boundaries;
 - Brain-authored Worker Task Contracts;
 - bounded `DISCOVERY`, `EXECUTION`, `ANALYSIS`, and `REVIEW` task modes;
+- persistent default Worker model/reasoning configuration;
 - clean-context worker spawning requirements;
 - native agent lifecycle and quiescent-wait rules;
 - result-packet normalization and Stage 2/Stage 3 validation;
@@ -45,7 +46,7 @@ Clone the repository into the skill location used by your Codex/agent host, or o
 git clone https://github.com/foo1maker/multi-agent-orchestration.git
 ```
 
-The repository root contains `SKILL.md`; keep `references/`, `agents/`, and `scripts/` beside it.
+The repository root contains `SKILL.md`; keep `config/`, `references/`, `agents/`, and `scripts/` beside it.
 
 The exact installation directory is intentionally not hard-coded because Codex/agent installations differ across operating systems and host setups.
 
@@ -63,22 +64,64 @@ Mode 2
 
 Simple tasks should remain single-agent. Mode 2 is for tasks where bounded delegation provides real execution or review value.
 
+## Worker model configuration
+
+Persistent Worker routing is configured in:
+
+```text
+config/worker_defaults.yaml
+```
+
+The shipped default preserves native host inheritance:
+
+```yaml
+worker:
+  model: inherit
+  reasoning_effort: auto
+```
+
+Meaning:
+
+- `model: inherit` — do not send a `model` override to `spawn_agent`;
+- `reasoning_effort: auto` — do not send a `reasoning_effort` override;
+- replace `inherit` with an exact model id to make that model the persistent Mode 2 Worker default;
+- replace `auto` with a supported explicit reasoning value if desired.
+
+Example:
+
+```yaml
+worker:
+  model: glm-5.3-flash
+  reasoning_effort: high
+```
+
+Resolution precedence is fixed:
+
+```text
+current-task explicit user choice
+> config/worker_defaults.yaml
+> host/runtime inheritance
+```
+
+A task-specific user choice therefore overrides the persistent default only for that task. The skill does not rewrite model ids or silently fall back to another model when an explicitly configured model is unavailable. Model ids and supported reasoning values remain host/provider-dependent.
+
 ## Repository layout
 
 ```text
 SKILL.md                         Main runtime policy
+config/worker_defaults.yaml      Persistent Worker model/reasoning defaults
 agents/openai.yaml               Skill interface metadata
 references/task_contract.md      Worker contract specification
 references/lifecycle_and_recovery.md
                                  Native lifecycle, waiting, recovery rules
 references/result_packet.md      Worker result and validation protocol
-scripts/audit_policy.py          Read-only structural policy audit
+scripts/audit_policy.py          Read-only structural policy/config audit
 scripts/lint_result_packet.py    RESULT_PACKET syntax/status linter
 tasks/                           Maintainer task history
 reports/                         Historical maintainer reports
 ```
 
-`tasks/` and `reports/` are historical maintenance records. They are not runtime authority; current runtime behavior is defined by `SKILL.md` and its referenced runtime documents.
+`tasks/` and `reports/` are historical maintenance records. They are not runtime authority; current runtime behavior is defined by `SKILL.md`, `config/worker_defaults.yaml`, and the referenced runtime documents.
 
 ## Validation
 
@@ -88,7 +131,7 @@ From the repository root:
 python scripts/audit_policy.py
 ```
 
-The audit checks the repository-local skill by default. Optional host/global policy files can be supplied explicitly; see `python scripts/audit_policy.py --help`.
+The audit checks the repository-local skill and Worker routing configuration by default. Optional host/global policy files can be supplied explicitly; see `python scripts/audit_policy.py --help`.
 
 A result packet can be linted from a file:
 
