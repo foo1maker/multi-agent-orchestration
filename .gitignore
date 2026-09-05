@@ -1,4 +1,31 @@
+# Python
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Local environment / credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs / runtime scratch
+*.log
+*.tmp
+*.bak
+.cache/
+.codex/
+
+# Editors / OS
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
