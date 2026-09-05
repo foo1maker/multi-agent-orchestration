@@ -77,76 +77,100 @@ Read all three references before the first spawn in a Mode 2 task:
 2. [Lifecycle and recovery](references/lifecycle_and_recovery.md)
 3. [Result packets and validation](references/result_packet.md)
 
+Also read `config/worker_defaults.yaml` before resolving Worker model routing.
+The configuration is a persistent default, not a replacement for current-task
+user instructions. Resolve Worker model settings in this order:
+
+1. Explicit model or reasoning-effort choice in the current user task.
+2. `config/worker_defaults.yaml`.
+3. Host/runtime inheritance.
+
+The default configuration preserves current behavior:
+
+```yaml
+worker:
+  model: inherit
+  reasoning_effort: auto
+```
+
+`model: inherit` means omit the `model` override. `reasoning_effort: auto` means
+omit the `reasoning_effort` override. Any other `model` value is an exact model
+id and must not be silently rewritten or aliased. Any explicit configured
+reasoning value is passed only when the live schema supports the override and it
+is compatible with the selected model. If the configuration file exists but is
+malformed or omits the required `worker.model` / `worker.reasoning_effort`
+fields, stop before spawning and report `BLOCKED` rather than guessing a route.
+
 Use Codex native `spawn_agent`, `wait_agent`, and `followup_task`. Do not start a
 second Codex runtime from a terminal.
 
 `mode2` / `Mode 2` / `启动模式2` / `开启模式2` / `使用模式2` is an explicit
-spawn request. After the three references are loaded, the next native call in
-that Mode 2 task must be `spawn_agent`, or `BLOCKED` if the live tool list has
-no `spawn_agent`. If Brain cannot yet write a normal EXECUTION, ANALYSIS, or
-REVIEW contract because target paths, manifests, schemas, or authoritative
-inputs are unresolved, the first spawn must be a bounded `DISCOVERY` contract.
-Missing execution facts are not permission for Brain to perform substantial
-reconnaissance before the first spawn. Do not emit a user-facing "Mode 2
-activated" / "I will spawn" message and then end the turn. Writing a contract
-without calling `spawn_agent` in the same turn is a protocol failure. A spawn
-that uses a full-history fork or a prose stub instead of a scoped contract is
-also a protocol failure: do not compensate for an unfinished contract by
-copying parent history. Do not call MCP servers named `codex` or `file_system`;
-read skill files with the native shell (`Get-Content -LiteralPath` on
-PowerShell).
+spawn request. After the three references and Worker defaults are loaded, the
+next native call in that Mode 2 task must be `spawn_agent`, or `BLOCKED` if the
+live tool list has no `spawn_agent`. If Brain cannot yet write a normal
+EXECUTION, ANALYSIS, or REVIEW contract because target paths, manifests,
+schemas, or authoritative inputs are unresolved, the first spawn must be a
+bounded `DISCOVERY` contract. Missing execution facts are not permission for
+Brain to perform substantial reconnaissance before the first spawn. Do not emit
+a user-facing "Mode 2 activated" / "I will spawn" message and then end the
+turn. Writing a contract without calling `spawn_agent` in the same turn is a
+protocol failure. A spawn that uses a full-history fork or a prose stub instead
+of a scoped contract is also a protocol failure: do not compensate for an
+unfinished contract by copying parent history. Do not call MCP servers named
+`codex` or `file_system`; read skill files with the native shell
+(`Get-Content -LiteralPath` on PowerShell).
 
 Root keeps the user's selected model and reasoning effort. Model routing for
 subagents is:
 
-- Ordinary Worker, Explorer, and Reviewer tasks default to the Codex host's
-  normal native worker model path: omit the `model`/`reasoning_effort`
-  overrides and inherit the host model unless the user explicitly specifies
-  another model or reasoning value for the task. OBSERVED 2026-09-04: on this
-  host, clean-context (`fork_turns: none`) workers on relay provider models
-  (`glm-5.3-flash`, `gemini-3.7-flash-high`) could not consume the encrypted
-  `NEW_TASK` contract payload and settled without executing the contract,
-  while GPT-5.6-class workers executed identical contracts correctly.
-- If the user explicitly requests a relay-provider worker model
-  (`glm-5.3-flash`, `gemini-3.7-flash-high`, `grok-4.6`), spawn it with a
-  reasoning effort that model supports and treat a settled no-execution or
+- Ordinary Worker, Explorer, and Reviewer tasks use the resolved Worker model
+  settings above. With the shipped defaults, omit the `model` and
+  `reasoning_effort` overrides and inherit the Codex host's normal native worker
+  model path. OBSERVED 2026-09-04: on this host, clean-context (`fork_turns:
+  none`) workers on relay provider models (`glm-5.3-flash`,
+  `gemini-3.7-flash-high`) could not consume the encrypted `NEW_TASK` contract
+  payload and settled without executing the contract, while GPT-5.6-class
+  workers executed identical contracts correctly.
+- If the current task or persistent configuration selects a relay-provider
+  Worker model (`glm-5.3-flash`, `gemini-3.7-flash-high`, `grok-4.6`), spawn it
+  with the resolved reasoning setting. Treat a settled no-execution or
   role-inverted result as insufficient evidence under the normal recovery
-  rules; do not silently substitute it as the ordinary default.
-- The GLM route for `glm-5.3-flash`, when explicitly requested, supports
+  rules; do not silently substitute another model merely because the configured
+  route is less reliable on the maintainer host.
+- The GLM route for `glm-5.3-flash`, when selected, supports
   `max`/`high`/`medium`/`low`, not `xhigh` or `ultra`. Do not request `xhigh`
-  for that model. Fallbacks spawned at an explicit user request use `high` or
-  `xhigh`, never `max`.
+  for that model. Fallbacks spawned after a task-specific explicit user request
+  use `high` or `xhigh`, never `max`.
 - Tasks requiring image, scanned-document, visual-page, screenshot, or other
-  multimodal input may use `glm-5.3-flash` when explicitly requested. If a
-  confirmed multimodal compatibility failure occurs, fall back to
-  `gemini-3.7-flash-high`, then `grok-4.6`.
+  multimodal input may use `glm-5.3-flash` when selected. If a confirmed
+  multimodal compatibility failure occurs, fall back to
+  `gemini-3.7-flash-high`, then `grok-4.6`, unless the current user task
+  explicitly forbids model substitution.
 - Do not retry a confirmed multimodal compatibility failure with a text-only
   model.
 
 Every `spawn_agent` call must use a clean Worker context. When the live schema
-exposes `fork_turns`, pass `none`. If it uses
-another name for a clean or bounded fork, pass that clean value. Full-history
-fork (`all` or equivalent) is a protocol failure: it copies the parent
-conversation and parent model, and model overrides do not apply. Put needed
-paths and facts in the Task Contract `message`; do not rely on parent history.
+exposes `fork_turns`, pass `none`. If it uses another name for a clean or
+bounded fork, pass that clean value. Full-history fork (`all` or equivalent) is
+a protocol failure: it copies the parent conversation and parent model, and
+model overrides do not apply. Put needed paths and facts in the Task Contract
+`message`; do not rely on parent history.
 
-When the schema exposes `model` and `reasoning_effort`, follow the routing
-above: omit both to inherit the host model on ordinary tasks, and pass them
-explicitly when the user requested a specific model or reasoning value.
-Reviewer Workers are read-only. Use an Inspector only when a formal-task
-acceptance risk justifies an independent, read-only, clean-context check.
+When the schema exposes `model` and `reasoning_effort`, use the resolved Worker
+settings above. Omit either field when its resolved value is `inherit` or
+`auto`, respectively. If the current user task selected a value, that value
+wins for that task only. Reviewer Workers are read-only. Use an Inspector only
+when a formal-task acceptance risk justifies an independent, read-only,
+clean-context check.
 
-An explicit user model or reasoning choice overrides these defaults only for the
-task where it was requested and only when the `spawn_agent` schema supports that
-override. Do not silently substitute a relay-provider model for the host's
-normal worker model path on ordinary tasks. When a user-requested model is
-selected, use a
-reasoning effort supported
-by that model/provider rather than copying the host effort. If a spawn is
-rejected because the effort is unsupported for that model, re-issue it once on
-the same model with a supported effort. Parallel spawning of independent Workers is
-allowed; only a runtime-confirmed spawn result counts as a live Worker, and a
-rejected wrapper call is re-issued as individual `spawn_agent` calls.
+Do not silently substitute another model for an explicit task or persistent
+configuration choice. If a spawn is rejected because the reasoning effort is
+unsupported for the selected model, re-issue it once on the same model with a
+supported effort. If the selected model itself is unavailable or rejected,
+report the route as `BLOCKED`/insufficient instead of silently falling back to
+the host model. Parallel spawning of independent Workers is allowed; only a
+runtime-confirmed spawn result counts as a live Worker, and a rejected wrapper
+call is re-issued as individual `spawn_agent` calls.
 
 Task names use lowercase letters, digits, and underscores. The Worker
 assignment is the Task Contract in `message`, not the parent transcript.
@@ -183,8 +207,8 @@ assignment is the Task Contract in `message`, not the parent transcript.
 
 Scripts in this skill validate policy structure and result-packet syntax only:
 
-- `scripts/audit_policy.py` checks policy placement, references, and forbidden
-  runtime filenames.
+- `scripts/audit_policy.py` checks policy placement, references, Worker routing
+  configuration, and forbidden runtime filenames.
 - `scripts/lint_result_packet.py` checks the text protocol and allowed status
   values. It does not judge whether the result is correct or sufficient.
 
