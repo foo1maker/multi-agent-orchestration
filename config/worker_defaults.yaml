@@ -1,0 +1,7 @@
+# Persistent default routing for Mode 2 Workers.
+# Current-task explicit user instructions override these values.
+# Keep `model: inherit` to preserve the host/runtime default worker model.
+# Keep `reasoning_effort: auto` to omit an effort override.
+worker:
+  model: inherit
+  reasoning_effort: auto
