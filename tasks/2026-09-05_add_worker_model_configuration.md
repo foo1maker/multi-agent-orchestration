@@ -1,6 +1,6 @@
 # Task: Add configurable Worker model entry to Mode 2
 
-STATUS: IN_PROGRESS
+STATUS: COMPLETED
 DATE: 2026-09-05
 OWNER: ChatGPT / repository maintainer
 TASK_TYPE: SKILL MAINTENANCE / CONFIGURATION
@@ -22,7 +22,7 @@ Add a simple persistent configuration entry for the default Mode 2 Worker model 
 9. Document the setting in `README.md`.
 10. Extend `scripts/audit_policy.py` to verify the configuration entry exists and has the required fields without adding external Python dependencies.
 
-## Required facts to read before editing
+## Required facts read before editing
 
 - `SKILL.md`
 - `README.md`
@@ -31,9 +31,7 @@ Add a simple persistent configuration entry for the default Mode 2 Worker model 
 - `references/lifecycle_and_recovery.md`
 - `references/result_packet.md`
 
-## Configuration contract
-
-Create:
+## Implemented configuration contract
 
 ```yaml
 worker:
@@ -41,49 +39,48 @@ worker:
   reasoning_effort: auto
 ```
 
-Semantics:
+Semantics now enforced by `SKILL.md`:
 
 - `worker.model: inherit` -> omit `model` in ordinary Worker spawn calls.
 - `worker.model: <exact model id>` -> pass that exact model id when the live `spawn_agent` schema supports model selection.
 - `worker.reasoning_effort: auto` -> omit `reasoning_effort`.
 - `worker.reasoning_effort: <explicit value>` -> pass that value only when compatible with the selected model/runtime schema.
 - Current-task explicit user instructions override both fields for that task only.
-- Do not create provider-specific aliases or silently rewrite model ids.
+- Persistent configured model ids are not silently rewritten or replaced by another model.
+- If a configured or task-explicit model is unavailable, the route fails closed rather than silently falling back to host inheritance.
+- Multimodal fallback may replace an inherited route, but may not override a persistent or task-explicit model unless the current task explicitly permits fallback.
 
-## Scope
-
-Allowed edits:
+## Files changed
 
 - `SKILL.md`
 - `README.md`
 - `scripts/audit_policy.py`
-- new `config/worker_defaults.yaml`
-- this task file
-
-Do not modify the three runtime reference documents unless implementation reveals a real semantic dependency; configuration should remain a spawn-routing concern in `SKILL.md`.
-
-## Forbidden changes
-
-- No custom scheduler/runtime.
-- No provider configuration changes.
-- No Codex global config changes.
-- No change to Brain scientific authority.
-- No change to Task Contract, RESULT_PACKET, waiting, or Running Worker Immunity semantics.
-- No hard-coded maintainer machine paths.
-- No forced default to a relay-provider model.
+- `config/worker_defaults.yaml`
+- `tasks/2026-09-05_add_worker_model_configuration.md`
 
 ## Validation
 
-- Verify `SKILL.md` documents the configuration read and precedence.
-- Verify default config preserves host inheritance.
-- Verify README includes editable examples.
-- Verify `scripts/audit_policy.py` checks for `config/worker_defaults.yaml`, `model`, and `reasoning_effort`.
-- Verify the repository-local audit remains dependency-free.
-- Confirm no runtime reference document changed.
+VERIFIED:
+
+- `config/worker_defaults.yaml` exists with `model: inherit` and `reasoning_effort: auto`.
+- `SKILL.md` reads the config before first Worker spawn and defines precedence as current-task explicit choice > persistent config > host/runtime inheritance.
+- `SKILL.md` preserves omission of model/effort overrides for the shipped defaults.
+- `SKILL.md` prevents silent replacement of persistent or task-explicit Worker models.
+- `README.md` documents the setting and an editable explicit-model example.
+- `scripts/audit_policy.py` remains standard-library only and checks the Worker config file and required fields.
+- The three runtime reference document blob SHAs are unchanged from the pre-task state:
+  - `references/task_contract.md`: `4ab9de7b44fa4c5c9831d7b10a444e4917b7bedd`
+  - `references/lifecycle_and_recovery.md`: `922f0d557f45d46d15ef28994e533f2792500dad`
+  - `references/result_packet.md`: `eb6e3b413396732dfb125f585a811d5a7d6e5972`
+
+NOT CLAIMED:
+
+- No live third-party Worker model/provider smoke test was run in this repository-only change.
+- Exact available model ids and supported reasoning values remain host/provider-dependent.
 
 ## Evidence boundary
 
-- VERIFIED: repository files and commits directly inspected.
-- OBSERVED: committed configuration/docs/policy changes.
-- INFERRED: host/provider compatibility behavior not exercised in this repository-only edit.
-- UNKNOWN: exact model IDs and supported reasoning values on third-party installations.
+- VERIFIED: repository files/tree/SHAs directly inspected.
+- OBSERVED: configuration, policy, README, and audit changes committed to `main`.
+- INFERRED: an installed host following `SKILL.md` will apply the persistent route when its `spawn_agent` schema exposes model overrides.
+- UNKNOWN: exact provider compatibility outside the maintainer environment.
