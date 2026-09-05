@@ -27,7 +27,13 @@ REQUIRED_SKILL_GROUPS = {
     "wait_semantics": ("quiescent wait", "list_agents"),
     "result_validation": ("RESULT_PACKET STATUS", "Stage 2", "Stage 3"),
     "clean_context": ("fork_turns", "clean Worker context"),
-    "portable_worker_route": ("inherit the host model",),
+    "portable_worker_route": ("inherit the Codex host",),
+    "worker_model_config": (
+        "config/worker_defaults.yaml",
+        "model: inherit",
+        "reasoning_effort: auto",
+        "Explicit model or reasoning-effort choice in the current user task",
+    ),
 }
 
 FORBIDDEN_RUNTIME_NAMES = {
@@ -64,6 +70,29 @@ def read_text(path: Path, failures: list[str]) -> str:
         failures.append(str(path))
         emit("FAIL", str(path), f"cannot read: {exc}")
         return ""
+
+
+def audit_worker_config(skill_dir: Path, failures: list[str]) -> None:
+    path = skill_dir / "config" / "worker_defaults.yaml"
+    text = read_text(path, failures)
+    if not text:
+        return
+
+    if not re.search(r"(?m)^\s*worker\s*:\s*$", text):
+        failures.append("worker-config:worker")
+        emit("FAIL", str(path), "missing top-level worker mapping")
+
+    model_match = re.search(r"(?m)^\s+model\s*:\s*([^#\n]+?)\s*(?:#.*)?$", text)
+    effort_match = re.search(
+        r"(?m)^\s+reasoning_effort\s*:\s*([^#\n]+?)\s*(?:#.*)?$", text
+    )
+
+    if not model_match or not model_match.group(1).strip():
+        failures.append("worker-config:model")
+        emit("FAIL", str(path), "worker.model is missing or empty")
+    if not effort_match or not effort_match.group(1).strip():
+        failures.append("worker-config:reasoning_effort")
+        emit("FAIL", str(path), "worker.reasoning_effort is missing or empty")
 
 
 def audit_optional_global_agents(path_text: str | None, failures: list[str], warnings: list[str]) -> None:
@@ -134,6 +163,8 @@ def audit(args: argparse.Namespace) -> int:
             failures.append("activation")
             emit("FAIL", f"{skill_file} / description", "explicit Mode 2 activation terms are incomplete")
 
+    audit_worker_config(skill_dir, failures)
+
     scripts_dir = skill_dir / "scripts"
     if scripts_dir.is_dir():
         for path in scripts_dir.iterdir():
@@ -150,7 +181,7 @@ def audit(args: argparse.Namespace) -> int:
     if warnings:
         emit("WARN", "summary", f"0 failures, {len(warnings)} warning(s)")
         return 0
-    emit("PASS", "summary", "policy structure and references are consistent")
+    emit("PASS", "summary", "policy structure, references, and worker routing config are consistent")
     return 0
 
 
