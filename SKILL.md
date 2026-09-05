@@ -139,13 +139,16 @@ subagents is:
   route is less reliable on the maintainer host.
 - The GLM route for `glm-5.3-flash`, when selected, supports
   `max`/`high`/`medium`/`low`, not `xhigh` or `ultra`. Do not request `xhigh`
-  for that model. Fallbacks spawned after a task-specific explicit user request
-  use `high` or `xhigh`, never `max`.
+  for that model. When the current task explicitly authorizes fallback to
+  another provider model, choose a reasoning effort supported by that fallback
+  rather than copying an incompatible effort from the original route.
 - Tasks requiring image, scanned-document, visual-page, screenshot, or other
-  multimodal input may use `glm-5.3-flash` when selected. If a confirmed
-  multimodal compatibility failure occurs, fall back to
-  `gemini-3.7-flash-high`, then `grok-4.6`, unless the current user task
-  explicitly forbids model substitution.
+  multimodal input may use `glm-5.3-flash` when selected. If an inherited model
+  route has a confirmed multimodal compatibility failure, the existing fallback
+  order may use `gemini-3.7-flash-high`, then `grok-4.6`. If the model came from
+  `config/worker_defaults.yaml` or an explicit current-task model choice, do not
+  substitute another model unless the current user task explicitly permits
+  fallback.
 - Do not retry a confirmed multimodal compatibility failure with a text-only
   model.
 
