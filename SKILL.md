@@ -101,8 +101,11 @@ is compatible with the selected model. If the configuration file exists but is
 malformed or omits the required `worker.model` / `worker.reasoning_effort`
 fields, stop before spawning and report `BLOCKED` rather than guessing a route.
 
-Use Codex native `spawn_agent`, `wait_agent`, and `followup_task`. Do not start a
-second Codex runtime from a terminal.
+Use only the live declared native lifecycle tools. On current Codex V1 that is
+the `multi_agent_v1` children `spawn_agent`, `wait_agent`, `send_input`,
+`close_agent`, and `resume_agent`. `followup_task`, `list_agents`, and
+`interrupt_agent` are not current V1 declared tools and must not be called.
+Do not start a second Codex runtime from a terminal.
 
 `mode2` / `Mode 2` / `启动模式2` / `开启模式2` / `使用模式2` is an explicit
 spawn request. After the three references and Worker defaults are loaded, the
@@ -193,15 +196,18 @@ assignment is the Task Contract in `message`, not the parent transcript.
 - Never treat `RESULT_PACKET STATUS` as a Codex native lifecycle state.
 - Never infer Worker failure from elapsed time, token use, reasoning duration,
   a wait timeout, or absence of an intermediate artifact.
-- Never poll files, logs, processes, or repeated agent listings to supervise a
-  live Worker, except the audits in lifecycle_and_recovery.md: the empty-set
-  `list_agents` check, and the five-minute named-output check.
+- Never poll files, logs, processes, timestamps, or repeated agent listings to
+  supervise a live Worker, except the five-minute named-output check in
+  lifecycle_and_recovery.md.
 - Never enter quiescent wait with zero confirmed live Workers; a rejected or
   unconfirmed spawn creates no Worker.
-- Quiescent wait has two bounded audits: after two consecutive silent
-  timeouts, one `list_agents` empty-set check; every ~5 minutes of silent
-  wait, one named-output check. Waiting on an empty or fully terminal agent
-  set cannot settle.
+- Quiescent wait's only scheduled audit is the five-minute named-output check.
+  `Wait timed out.` is not a Worker failure and is not an `unsupported call`.
+- A concrete `unsupported call` is a hard capability/dispatch boundary for that
+  attempted tool identity. Do not retry it under guessed bare, dotted,
+  namespaced, or alias forms; do not spawn a replacement Worker for an already
+  live scope; do not fill the gap with shell, `Get-Date`, log, or file polling.
+  Details are in lifecycle_and_recovery.md.
 - Never interrupt or replace a Worker solely because it appears slow. User
   `卡住` is steering: run the named-output check now (lifecycle_and_recovery.md).
   Do not take over a Worker SCOPE while native status is still `running`.

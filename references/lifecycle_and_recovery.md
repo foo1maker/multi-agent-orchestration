@@ -22,6 +22,87 @@ parameters the schema does not list, and do not pass a JSON float. Omitting
 `timeout_ms` uses the configured default. A longer window only reduces
 wakeups; timeout semantics are unchanged.
 
+## Unsupported Call Fail-Fast
+
+A concrete `unsupported call` is a hard capability/dispatch boundary for that
+attempted tool identity in the current task state. Brain must not keep trying
+alternate spellings, namespace forms, aliases, or repeated calls for the same
+semantic action merely to make the runtime accept it.
+
+This is not `Wait timed out.`. A normal native wait timeout remains a wait
+wakeup only. Only an actual dispatch/capability failure such as
+`unsupported call: ...` triggers this hard boundary.
+
+After the first concrete unsupported dispatch for a semantic action:
+
+- do not retry that action under guessed bare, dotted, namespaced, or alias
+  identities;
+- do not repeat the same unsupported call;
+- do not invent `followup_task`, `list_agents`, `interrupt_agent`, or any other
+  undeclared name as a substitute;
+- do not start shell, `Get-Date`, log, file, repo, or progress loops merely to
+  stay busy.
+
+### A. Spawn was not confirmed
+
+If `spawn_agent` or the live declared spawn action returns `unsupported call`
+and no Worker was confirmed:
+
+- treat that spawn as failed;
+- do not retry the same semantic spawn under guessed/bare/dotted/renamed
+  identities;
+- do not enter wait for a nonexistent Worker;
+- do not quietly execute the delegated Worker scope in Brain merely because
+  delegation failed;
+- report `BLOCKED` or use an already-defined non-delegated path only when the
+  task/user explicitly permits that fallback.
+
+Re-issuing a rejected parallel wrapper as individual `spawn_agent` calls is
+allowed only when the wrapper itself was rejected and nothing was created. It
+is not permission to mutate the spawn tool identity. A reasoning-effort
+rejection on the same model may still be retried once with a supported effort.
+An `unsupported call` on spawn is not an effort retry.
+
+### B. Worker was already confirmed live
+
+If a Worker was successfully created and a later lifecycle action (`wait_agent`,
+`send_input`, `close_agent`, `resume_agent`, or any other live declared
+lifecycle tool) returns `unsupported call`:
+
+- do not create replacement Workers for the same scope;
+- do not mutate the tool identity and retry variants;
+- do not take over the live Worker scope;
+- do not perform compensatory polling or shell activity merely to stay busy;
+- consume a native completion notification/result if it arrives — current V1
+  `wait_agent` semantics deliver a completion notification even when an
+  explicit wait call is later rejected;
+- if the runtime leaves no safe declared lifecycle action to proceed, stop
+  further orchestration attempts and report the precise degraded/`BLOCKED`
+  state rather than looping.
+
+### C. `Wait timed out.` remains different
+
+`Wait timed out.` means only that the current wait operation expired. It is
+not a Worker failure, not an `unsupported call`, and not this fail-fast
+boundary. When it returns with no Worker settlement, no native failure, no
+Worker request for input, no new user input, and no concrete new error
+evidence, immediately call `wait_agent` again unless the five-minute
+named-output check below is due.
+
+### D. Non-lifecycle unsupported tools
+
+If an unrelated tool such as search returns `unsupported call`:
+
+- do not retry the same unsupported identity repeatedly;
+- do not guess aliases or alternate spellings;
+- do not launch unrelated command loops merely to compensate;
+- continue only with genuinely supported work that still advances the user
+  goal and does not pretend the missing capability succeeded;
+- if that capability is required for correctness, report `BLOCKED`/insufficient
+  evidence.
+
+Do not implement a search compatibility layer from this rule.
+
 ## Spawn Confirmation
 
 Parallel spawning of independent Workers is allowed and normal. Whatever call
@@ -37,47 +118,30 @@ A Worker exists only after the native runtime confirms the spawn. A rejected,
 errored, or unconfirmed spawn result means that Worker does not exist. If a
 spawn is rejected because the requested reasoning effort is unsupported for the
 target model, re-issue that spawn once with a supported effort. If every spawn
-in the round failed, nothing is live: correct the contracts and re-spawn, or
-stop and report `BLOCKED` or `ERROR`. Never enter quiescent wait for a round in
-which no Worker was confirmed.
+in the round failed from contract or effort issues, nothing is live: correct
+the contracts and re-spawn, or stop and report `BLOCKED` or `ERROR`. If the
+spawn failure was `unsupported call`, follow case A; do not re-spawn under a
+guessed identity. Never enter quiescent wait for a round in which no Worker
+was confirmed.
 
 `Wait timed out.` means only that the current wait operation expired. It is not
 a Worker task timeout, failure, stall, token-budget signal, or recovery trigger.
 When it returns with no Worker settlement, no native failure, no Worker request
 for input, no new user input, and no concrete new error evidence, immediately
-call `wait_agent` again unless a scheduled audit below is due. The only actions
-allowed between those waits are the empty-set audit and the five-minute output
-check. Insert no other progress-related or speculative execution: no `git
-status` or repo scan, no listing of unnamed directories, no log or database
-read, no external progress query, no extra `list_agents`, no checksum, no early
-test of unsettled artifacts, no speculative Stage 2 or validation checklist, no
-next-round preparation, no reread of the same policy, and no doing part of a
-live Worker's task.
+call `wait_agent` again unless the five-minute named-output check below is due.
+The only action allowed between those waits is that named-output check. Insert
+no other progress-related or speculative execution: no `git status` or repo
+scan, no listing of unnamed directories, no log or database read, no external
+progress query, no undeclared listing tool, no checksum, no early test of
+unsettled artifacts, no speculative Stage 2 or validation checklist, no
+next-round preparation, no reread of the same policy, no `Get-Date` or other
+time probe, and no doing part of a live Worker's task.
 
-## Empty-Set Audit
-
-Quiescent wait can only settle something if at least one confirmed Worker is
-live. On an empty or fully terminal agent set, `wait_agent` returns nothing but
-timeouts forever, so consecutive silent timeouts are the one signal that
-justifies a native lifecycle check:
-
-- After two consecutive `wait_agent` timeouts with no settlement, no native
-  failure, no Worker input request, and no new user input, call `list_agents`
-  once.
-- If any Worker is still `running`, resume quiescent wait immediately. The
-  audit reads native lifecycle state; it is not progress inspection, produces
-  no failure evidence against a live Worker, and does not weaken Running
-  Worker Immunity.
-- If no live Worker remains — an empty listing, or every Worker `errored`,
-  `interrupted`, or `shutdown` — stop waiting. Waiting cannot produce a
-  settlement with no live Worker. Consume any results not yet processed, then
-  follow Recovery, or report `PARTIAL`, `BLOCKED`, or `ERROR` when there is
-  nothing to recover.
-
-The timeout count is a scheduling cue for when to consult the native lifecycle.
-It lives in Brain's reasoning only, never as a file, counter artifact, or
-monitor. It never measures Worker progress, never infers failure from elapsed
-time, and never authorizes `interrupt_agent` by itself.
+Current V1 does not declare `list_agents`. Do not call it. Consecutive silent
+timeouts are not permission to invent a listing, close, or respawn action.
+Consume a native completion or failure notification if one arrives. If
+`wait_agent` itself returned `unsupported call`, follow case B above instead
+of waiting, listing, or spawning a replacement Worker.
 
 ## Five-Minute Output Check
 
@@ -96,14 +160,17 @@ read file contents, do not scan the repository, and do not inspect unnamed
 paths.
 
 - Named output exists: re-wait. Do not start Stage 2 on unsettled artifacts.
-- No named output: send one `followup_task` telling that Worker to write the
-  named deliverable now from evidence already in hand, with no further probes
-  except that write, then settle `SUCCESS`, `PARTIAL`, or `BLOCKED`. Then
-  re-wait. Repeat this check every ~5 minutes while that Worker stays live
-  and unsettled.
+- No named output: if the live schema declares `send_input`, send one queued
+  `send_input` (`target` = that Worker id, `message` = write the named
+  deliverable now from evidence already in hand, with no further probes except
+  that write, then settle `SUCCESS`, `PARTIAL`, or `BLOCKED`; omit `interrupt`).
+  Then re-wait. Repeat this check every ~5 minutes while that Worker stays live
+  and unsettled. `followup_task` is not a current V1 declared tool; do not call
+  it, and do not treat `send_input` as a renamed alias of an undeclared name.
 
-This check does not authorize `interrupt_agent` and is not Worker failure
-evidence. Repeat it on the same cadence; do not poll faster.
+This check does not authorize shutdown or takeover and is not Worker failure
+evidence. Repeat it on the same cadence; do not poll faster. If `send_input`
+returns `unsupported call`, follow case B; do not retry variants.
 
 Brain thinking is internal and does not require tool calls. Shell commands,
 repo inspections, file reads, tests, data transforms, and external calls are
@@ -122,19 +189,19 @@ Handle the new input, then reassess live Workers. Do not cancel them by default.
 User steering that the turn is stuck (`卡住`, `卡了`, `stuck`, and similar)
 is not elapsed-time failure evidence. On that first phrasing, run the
 named-output check immediately rather than waiting for the five-minute cadence.
-Workers with no named output get the write-now `followup_task` above. Do not
-`interrupt_agent` on that first phrasing alone.
+Workers with no named output get the write-now `send_input` above. Do not
+`close_agent` on that first phrasing alone.
 
 A second, explicit kill (`真的卡了`, `还是卡住`, `停掉`, `杀掉`, stop/kill
-the workers) is condition 1 below. Interrupt only Workers that still have no
-named deliverable. Then confirm native death with `list_agents` before doing
-anything in their SCOPE.
+the workers) is condition 1 below. Close only Workers that still have no named
+deliverable, using live declared `close_agent`. Then read that close result
+before doing anything in their SCOPE. Do not call undeclared `list_agents`.
 
 Do not build barriers, counters, status files, heartbeat files, or progress
 monitors around native waiting. Do not inspect files, directories, logs,
 processes, database rows, external APIs, token use, reasoning duration, or
-repeated `list_agents` calls merely to estimate progress, except the
-five-minute named-output check above.
+repeated listings merely to estimate progress, except the five-minute
+named-output check above.
 
 ## Running Worker Immunity
 
@@ -147,7 +214,7 @@ Wait timed out. != Worker failure evidence
 
 A live Worker is allowed to remain `running`. Do not replace or interrupt it
 merely for slowness. The five-minute named-output check is the only scheduled
-nudge: missing named outputs get one `followup_task` that cycle; existing
+nudge: missing named outputs get one queued `send_input` that cycle; existing
 named outputs get none. Artifacts remain acceptance evidence after
 settlement, not a reason to start Stage 2 early.
 
@@ -157,20 +224,27 @@ Recovery follows a settled insufficient result or concrete failure evidence:
 
 ```text
 settled result insufficient
--> existing Worker context still useful? yes: followup_task
+-> existing Worker context still useful? yes: send_input
 -> otherwise: new Worker
 ```
 
+Use live declared `send_input` to steer an existing Worker (`target` required;
+`message` or `items`). Omit `interrupt` to queue; set `interrupt=true` only for
+an explicit immediate redirect. This is the live V1 steering tool, not a
+renamed `followup_task`. Do not call `followup_task`.
+
 Recovery may also follow a native terminal failure, a verified contract
 violation, or an explicit user change of direction. Do not trigger recovery
-solely from elapsed time, token use, no artifact, reasoning duration, or a wait
-timeout.
+solely from elapsed time, token use, no artifact, reasoning duration, a wait
+timeout, or an `unsupported call`. An `unsupported call` follows the fail-fast
+rule above, not this recovery fork.
 
-`interrupt_agent` is exceptional. Use it only when at least one concrete
-condition applies:
+Shutdown is exceptional. Current V1 declares `close_agent` for shutdown and
+does not declare `interrupt_agent`; do not call `interrupt_agent`. Use
+`close_agent` only when at least one concrete condition applies:
 
 1. The user explicitly requests stop or redirection, including a second
-   stuck/kill steering after the write-now followup above.
+   stuck/kill steering after the write-now `send_input` above.
 2. The Worker explicitly reports it cannot continue.
 3. Native lifecycle confirms a terminal failure such as `errored`,
    `interrupted`, or `shutdown`.
@@ -181,12 +255,12 @@ condition applies:
 
 Do not add hard time or token watchdogs. Native lifecycle remains authoritative.
 
-An empty `followup_task` result is not proof the Worker received it. Do not
-retry in a tight loop. Re-wait until the next output check or user steering.
+An empty `send_input` result is not proof the Worker received it. Do not retry
+in a tight loop. Re-wait until the next output check or user steering. If
+`send_input` returns `unsupported call`, follow case B.
 
-After `interrupt_agent`, call `list_agents` once. `previous_status: running`
-on the interrupt result is not death. If that Worker is still `running`,
-native interrupt did not terminate it: do not start the same SCOPE on the
-main thread, and do not assume the child is idle. Report that it is still
-live. Only take over that SCOPE after native status is `interrupted`,
-`shutdown`, `errored`, or `completed`.
+After `close_agent`, read the close result. `previous_status: running` on that
+result is not death. If native completion or a still-running indication
+remains, do not start the same SCOPE on the main thread, and do not assume the
+child is idle. Report that it is still live. Only take over that SCOPE after
+native status is `interrupted`, `shutdown`, `errored`, or `completed`.

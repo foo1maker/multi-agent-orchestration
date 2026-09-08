@@ -24,7 +24,13 @@ REQUIRED_SKILL_GROUPS = {
         "bounded `DISCOVERY` contract",
     ),
     "non_duplication": ("must not secretly repeat",),
-    "wait_semantics": ("quiescent wait", "list_agents"),
+    "wait_semantics": ("quiescent wait", "Wait timed out."),
+    "fail_fast_unsupported": (
+        "hard capability/dispatch boundary",
+        "unsupported call",
+        "Wait timed out.",
+        "do not retry that action under guessed bare",
+    ),
     "result_validation": ("RESULT_PACKET STATUS", "Stage 2", "Stage 3"),
     "clean_context": ("fork_turns", "clean Worker context"),
     "portable_worker_route": ("inherit the Codex host",),
@@ -48,12 +54,20 @@ FORBIDDEN_RUNTIME_NAMES = {
     "mode2_runtime.py",
 }
 
+# Stale names may appear only as historical/non-callable warnings.
+FORBIDDEN_EXECUTABLE_INSTRUCTIONS = (
+    "Use Codex native `spawn_agent`, `wait_agent`, and `followup_task`",
+    "call `list_agents` once",
+    "yes: followup_task",
+)
+
 GLOBAL_DETAIL_MARKERS = (
     "wait_agent is an ANY-child",
     "Running Worker Immunity",
     "RESULT_PACKET\nSTATUS:",
     "Stage 1 (Worker Settlement)",
     "interrupt_agent is exceptional",
+    "hard capability/dispatch boundary",
 )
 
 DEFAULT_SKILL_DIR = Path(__file__).resolve().parents[1]
@@ -154,6 +168,15 @@ def audit(args: argparse.Namespace) -> int:
             if missing:
                 failures.append(f"skill:{section}")
                 emit("FAIL", f"{skill_file} / {section}", f"missing: {', '.join(missing)}")
+
+        for token in FORBIDDEN_EXECUTABLE_INSTRUCTIONS:
+            if token in combined_skill:
+                failures.append(f"stale-instruction:{token}")
+                emit(
+                    "FAIL",
+                    f"{skill_file} / stale-instruction",
+                    f"undeclared tool still instructed as callable: {token}",
+                )
 
         frontmatter = re.match(r"\A---\s*\n(.*?)\n---", skill_text, re.S)
         if not frontmatter or "name: multi-agent-orchestration" not in frontmatter.group(1):
