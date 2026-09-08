@@ -27,7 +27,7 @@ UNSUPPORTED_CALL_SMOKE: PASS (same bounded run: unsupported call: wait_agent x1,
 POLICY_AUDIT: PASS (python scripts/audit_policy.py)
 INSTALLED_COPY_SYNCED: NO — conflict; independent local edits in C:\Users\1\.agents\skills\multi-agent-orchestration (SKILL.md has DSFlash and no worker_defaults.yaml path, does not match any git SKILL.md commit; audit_policy.py and task_contract.md also differ; config/ absent). lifecycle_and_recovery.md was an unmodified mirror pre-change, but the copy as a whole is not. Per task rule, did not overwrite
 SOURCE_COMMIT: 3da84aa22bffcab404b01adf374578c5f25b36ff
-REPORT_COMMIT: a26bb53334b89e17934e662ed49fe36d32aabaff
+REPORT_COMMIT: e056c63d82760377b9ed3fd89db7f22774b1a7dd
 ROLLBACK_CONDITION: Roll back the skill change if normal Mode 2 stops after ordinary Wait timed out., if settled Worker results can no longer be consumed, or if Brain abandons confirmed live Workers merely because they are slow
 NEXT_MINIMAL_ACTION: Do not overwrite the installed copy until the independent SKILL.md/audit_policy.py/task_contract.md edits are reconciled. web_search typed-tool mismatch remains a separate task; do not start that bridge from this report
 ```
