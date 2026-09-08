@@ -5,7 +5,7 @@ COMPLETE — the installed Mode 2 skill copy was audited file-by-file, no instal
 ```text
 TASK_STATUS: COMPLETE
 SOURCE_HEAD_BEFORE: 5fa5241059b3a1551678d09ddaef00777c28db17
-SOURCE_HEAD_AFTER: (this report commit)
+SOURCE_HEAD_AFTER: 6958261d44c1b91b1ed12f9e75c707fb088cce15
 INSTALLED_COPY_CONFLICT_CONFIRMED: YES
 INSTALLED_ONLY_FILES: none (skill files); leftover scripts/__pycache__ bytecode only
 INSTALLED_ONLY_BEHAVIORS_REVIEWED: YES
