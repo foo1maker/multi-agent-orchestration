@@ -5,9 +5,10 @@ description: Use when the user explicitly activates Mode 2 (including "启动模
 
 # Multi-Agent Orchestration
 
-Mode 2 is the user-facing alias for this skill. Load this skill before the first
-`spawn_agent` whenever Mode 2 is activated. Its activation lasts only for the
-current task and ends when the task finishes or the user says to stop Mode 2.
+Mode 2 is the user-facing alias for this skill. Load this skill before the
+first spawn tool call of the live session whenever Mode 2 is activated. Its
+activation lasts only for the current task and ends when the task finishes
+or the user says to stop Mode 2.
 
 ## Architecture
 
@@ -101,28 +102,25 @@ is compatible with the selected model. If the configuration file exists but is
 malformed or omits the required `worker.model` / `worker.reasoning_effort`
 fields, stop before spawning and report `BLOCKED` rather than guessing a route.
 
-Use only the live declared native lifecycle tools. On current Codex native V2
-the formal lifecycle children declared by the installed runtime are
-`spawn_agent`, `wait_agent`, `send_input`, `close_agent`, `resume_agent`, and
-`followup_task`. Treat the live session tool list as authoritative before
-every call: do not call a lifecycle name the current session does not declare,
-and do not guess bare, dotted, or alias spellings. Call `list_agents` or
-`interrupt_agent` only when the live session explicitly declares them; the
-formal Mode 2 route does not depend on them. Do not start a second Codex
+Use only the live declared native lifecycle tools. The installed Codex runtime
+is authoritative: read the session tool list it actually declares and call only
+those names. Do not maintain or consult a static versioned tool list in this
+skill, do not call a lifecycle name the current session does not declare, and
+do not guess bare, dotted, or alias spellings. Do not start a second Codex
 runtime from a terminal.
 
 `mode2` / `Mode 2` / `启动模式2` / `开启模式2` / `使用模式2` is an explicit
 spawn request. After the three references and Worker defaults are loaded, the
-next native call in that Mode 2 task must be `spawn_agent`, or `BLOCKED` if the
-live tool list has no `spawn_agent`. If Brain cannot yet write a normal
-EXECUTION, ANALYSIS, or REVIEW contract because target paths, manifests,
+next native call in that Mode 2 task must be the live session's declared spawn
+tool, or `BLOCKED` if the live tool list declares no spawn tool. If Brain
+cannot yet write a normal EXECUTION, ANALYSIS, or REVIEW contract because target paths, manifests,
 schemas, or authoritative inputs are unresolved, the first spawn must be a
 bounded `DISCOVERY` contract. Missing execution facts are not permission for
 Brain to perform substantial reconnaissance before the first spawn. Do not emit
 a user-facing "Mode 2 activated" / "I will spawn" message and then end the
-turn. Writing a contract without calling `spawn_agent` in the same turn is a
-protocol failure. A spawn that uses a full-history fork or a prose stub instead
-of a scoped contract is also a protocol failure: do not compensate for an
+turn. Writing a contract without calling the declared spawn tool in the same
+turn is a protocol failure. A spawn that uses a full-history fork or a prose
+stub instead of a scoped contract is also a protocol failure: do not compensate for an
 unfinished contract by copying parent history. Do not call MCP servers named
 `codex` or `file_system`; read skill files with the native shell
 (`Get-Content -LiteralPath` on PowerShell).
@@ -133,38 +131,37 @@ subagents is:
 - Ordinary Worker, Explorer, and Reviewer tasks use the resolved Worker model
   settings above. With the shipped defaults, omit the `model` and
   `reasoning_effort` overrides and inherit the Codex host's normal native worker
-  model path. OBSERVED 2026-09-04: on this host, clean-context (`fork_turns:
-  none`) workers on relay provider models (`glm-5.3-flash`,
-  `gemini-3.7-flash-high`) could not consume the encrypted `NEW_TASK` contract
-  payload and settled without executing the contract, while GPT-5.6-class
-  workers executed identical contracts correctly.
+  model path. OBSERVED 2026-09-04: on this host, clean-context workers on
+  relay provider models could not consume the encrypted contract payload and
+  settled without executing the contract, while GPT-5.6-class workers executed
+  identical contracts correctly.
 - If the current task or persistent configuration selects a relay-provider
-  Worker model (`glm-5.3-flash`, `gemini-3.7-flash-high`, `grok-4.6`), spawn it
-  with the resolved reasoning setting. Treat a settled no-execution or
-  role-inverted result as insufficient evidence under the normal recovery
-  rules; do not silently substitute another model merely because the configured
-  route is less reliable on the maintainer host.
-- The GLM route for `glm-5.3-flash`, when selected, supports
-  `max`/`high`/`medium`/`low`, not `xhigh` or `ultra`. Do not request `xhigh`
-  for that model. When the current task explicitly authorizes fallback to
-  another provider model, choose a reasoning effort supported by that fallback
-  rather than copying an incompatible effort from the original route.
+  Worker model, spawn it with the resolved reasoning setting. Treat a settled
+  no-execution or role-inverted result as insufficient evidence under the
+  normal recovery rules; do not silently substitute another model merely
+  because the configured route is less reliable on the maintainer host.
+- A selected Worker model may not support every reasoning effort the host
+  offers. Do not request an effort the selected model does not support. When
+  the current task explicitly authorizes fallback to another provider model,
+  choose a reasoning effort supported by that fallback rather than copying an
+  incompatible effort from the original route.
 - Tasks requiring image, scanned-document, visual-page, screenshot, or other
-  multimodal input may use `glm-5.3-flash` when selected. If an inherited model
-  route has a confirmed multimodal compatibility failure, the existing fallback
-  order may use `gemini-3.7-flash-high`, then `grok-4.6`. If the model came from
-  `config/worker_defaults.yaml` or an explicit current-task model choice, do not
-  substitute another model unless the current user task explicitly permits
+  multimodal input may use a multimodal-capable selected model. If an
+  inherited model route has a confirmed multimodal compatibility failure, use
+  the current task's authorized fallback order. If the model came from
+  `config/worker_defaults.yaml` or an explicit current-task model choice, do
+  not substitute another model unless the current user task explicitly permits
   fallback.
 - Do not retry a confirmed multimodal compatibility failure with a text-only
   model.
 
-Every `spawn_agent` call must use a clean Worker context. When the live schema
-exposes `fork_turns`, pass `none`. If it uses another name for a clean or
-bounded fork, pass that clean value. Full-history fork (`all` or equivalent) is
-a protocol failure: it copies the parent conversation and parent model, and
-model overrides do not apply. Put needed paths and facts in the Task Contract
-`message`; do not rely on parent history.
+Every spawn call must use a clean Worker context. Read the live spawn tool
+schema: pass whichever value it declares for a clean or bounded fork (for
+example a `fork_turns`-style parameter set to `none`); if the schema names the
+clean fork differently, pass that declared clean value. Full-history fork
+(`all` or equivalent) is a protocol failure: it copies the parent conversation
+and parent model, and model overrides do not apply. Put needed paths and facts
+in the Task Contract `message`; do not rely on parent history.
 
 When the schema exposes `model` and `reasoning_effort`, use the resolved Worker
 settings above. Omit either field when its resolved value is `inherit` or
@@ -180,7 +177,7 @@ supported effort. If the selected model itself is unavailable or rejected,
 report the route as `BLOCKED`/insufficient instead of silently falling back to
 the host model. Parallel spawning of independent Workers is allowed; only a
 runtime-confirmed spawn result counts as a live Worker, and a rejected wrapper
-call is re-issued as individual `spawn_agent` calls.
+call is re-issued as individual live declared spawn calls.
 
 Task names use lowercase letters, digits, and underscores. The Worker
 assignment is the Task Contract in `message`, not the parent transcript.

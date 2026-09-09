@@ -32,7 +32,7 @@ REQUIRED_SKILL_GROUPS = {
         "do not retry that action under guessed bare",
     ),
     "result_validation": ("RESULT_PACKET STATUS", "Stage 2", "Stage 3"),
-    "clean_context": ("fork_turns", "clean Worker context"),
+    "clean_context": ("clean Worker context", "Full-history fork"),
     "portable_worker_route": ("inherit the Codex host",),
     "worker_model_config": (
         "config/worker_defaults.yaml",
@@ -61,14 +61,31 @@ FORBIDDEN_EXECUTABLE_INSTRUCTIONS = (
     "yes: followup_task",
     "On current Codex V1 that is",
     "not current V1 declared tools",
+    "On current Codex native V2",
+    "formal lifecycle children declared by the installed runtime",
+)
+
+# Version-coupled tool routing: the skill must defer to the live session tool
+# list, never to a static V1/V2 tool table. These markers catch regression to
+# any static versioned child-tool table in the policy text.
+VERSIONED_TOOL_TABLE_MARKERS = (
+    "multi_agent_v1",
+    "multi_agent_v2",
+    "current Codex V1",
+    "current Codex native V2",
+    "The formal V2 route",
+    "live V2 declared",
+    "live V1 steering",
+    "live V2 steering",
+    "The V2 lifecycle",
+    "The V1 lifecycle",
 )
 
 GLOBAL_DETAIL_MARKERS = (
-    "wait_agent is an ANY-child",
+    "is an ANY-child",
     "Running Worker Immunity",
     "RESULT_PACKET\nSTATUS:",
     "Stage 1 (Worker Settlement)",
-    "interrupt_agent is exceptional",
     "hard capability/dispatch boundary",
 )
 
@@ -141,7 +158,7 @@ def audit_optional_legacy_policy(path_text: str | None, failures: list[str]) -> 
     if "ARCHIVED" not in text or "multi-agent-orchestration" not in text:
         failures.append("legacy-authority")
         emit("FAIL", str(path), "legacy policy is not an archived pointer to the skill")
-    if "wait_agent is an ANY-child" in text or "RESULT_PACKET\nSTATUS:" in text:
+    if "is an ANY-child" in text or "RESULT_PACKET\nSTATUS:" in text:
         failures.append("legacy-duplicate")
         emit("FAIL", str(path), "workflow detail still duplicates the skill")
 
@@ -178,6 +195,25 @@ def audit(args: argparse.Namespace) -> int:
                     "FAIL",
                     f"{skill_file} / stale-instruction",
                     f"undeclared tool still instructed as callable: {token}",
+                )
+
+        for marker in VERSIONED_TOOL_TABLE_MARKERS:
+            if marker in combined_skill:
+                failures.append(f"versioned-tool-table:{marker}")
+                emit(
+                    "FAIL",
+                    f"{skill_file} / versioned-tool-table",
+                    "static versioned tool routing regression: {0}".format(marker),
+                )
+
+        for concrete in ("wait_agent", "send_input", "close_agent", "resume_agent",
+                         "followup_task", "list_agents", "interrupt_agent"):
+            if concrete in combined_skill:
+                failures.append(f"concrete-lifecycle-name:{concrete}")
+                emit(
+                    "FAIL",
+                    f"{skill_file} / concrete-lifecycle-name",
+                    "policy names a concrete lifecycle tool instead of the live session declaration: {0}".format(concrete),
                 )
 
         frontmatter = re.match(r"\A---\s*\n(.*?)\n---", skill_text, re.S)
