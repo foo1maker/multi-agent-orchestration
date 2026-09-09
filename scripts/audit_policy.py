@@ -59,6 +59,8 @@ FORBIDDEN_EXECUTABLE_INSTRUCTIONS = (
     "Use Codex native `spawn_agent`, `wait_agent`, and `followup_task`",
     "call `list_agents` once",
     "yes: followup_task",
+    "On current Codex V1 that is",
+    "not current V1 declared tools",
 )
 
 GLOBAL_DETAIL_MARKERS = (

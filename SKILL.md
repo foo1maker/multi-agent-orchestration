@@ -101,11 +101,15 @@ is compatible with the selected model. If the configuration file exists but is
 malformed or omits the required `worker.model` / `worker.reasoning_effort`
 fields, stop before spawning and report `BLOCKED` rather than guessing a route.
 
-Use only the live declared native lifecycle tools. On current Codex V1 that is
-the `multi_agent_v1` children `spawn_agent`, `wait_agent`, `send_input`,
-`close_agent`, and `resume_agent`. `followup_task`, `list_agents`, and
-`interrupt_agent` are not current V1 declared tools and must not be called.
-Do not start a second Codex runtime from a terminal.
+Use only the live declared native lifecycle tools. On current Codex native V2
+the formal lifecycle children declared by the installed runtime are
+`spawn_agent`, `wait_agent`, `send_input`, `close_agent`, `resume_agent`, and
+`followup_task`. Treat the live session tool list as authoritative before
+every call: do not call a lifecycle name the current session does not declare,
+and do not guess bare, dotted, or alias spellings. Call `list_agents` or
+`interrupt_agent` only when the live session explicitly declares them; the
+formal Mode 2 route does not depend on them. Do not start a second Codex
+runtime from a terminal.
 
 `mode2` / `Mode 2` / `启动模式2` / `开启模式2` / `使用模式2` is an explicit
 spawn request. After the three references and Worker defaults are loaded, the

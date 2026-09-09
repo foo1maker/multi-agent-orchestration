@@ -38,8 +38,8 @@ After the first concrete unsupported dispatch for a semantic action:
 - do not retry that action under guessed bare, dotted, namespaced, or alias
   identities;
 - do not repeat the same unsupported call;
-- do not invent `followup_task`, `list_agents`, `interrupt_agent`, or any other
-  undeclared name as a substitute;
+- do not invent `list_agents`, `interrupt_agent`, or any other name the live
+  session does not declare as a substitute;
 - do not start shell, `Get-Date`, log, file, repo, or progress loops merely to
   stay busy.
 
@@ -73,8 +73,8 @@ lifecycle tool) returns `unsupported call`:
 - do not mutate the tool identity and retry variants;
 - do not take over the live Worker scope;
 - do not perform compensatory polling or shell activity merely to stay busy;
-- consume a native completion notification/result if it arrives — current V1
-  `wait_agent` semantics deliver a completion notification even when an
+- consume a native completion notification/result if it arrives — the native
+  wait lifecycle can deliver a completion notification even when an
   explicit wait call is later rejected;
 - if the runtime leaves no safe declared lifecycle action to proceed, stop
   further orchestration attempts and report the precise degraded/`BLOCKED`
@@ -137,7 +137,8 @@ unsettled artifacts, no speculative Stage 2 or validation checklist, no
 next-round preparation, no reread of the same policy, no `Get-Date` or other
 time probe, and no doing part of a live Worker's task.
 
-Current V1 does not declare `list_agents`. Do not call it. Consecutive silent
+The formal V2 route does not declare `list_agents` for this flow. Do not call
+it unless the live session explicitly declares it. Consecutive silent
 timeouts are not permission to invent a listing, close, or respawn action.
 Consume a native completion or failure notification if one arrives. If
 `wait_agent` itself returned `unsupported call`, follow case B above instead
@@ -165,8 +166,10 @@ paths.
   deliverable now from evidence already in hand, with no further probes except
   that write, then settle `SUCCESS`, `PARTIAL`, or `BLOCKED`; omit `interrupt`).
   Then re-wait. Repeat this check every ~5 minutes while that Worker stays live
-  and unsettled. `followup_task` is not a current V1 declared tool; do not call
-  it, and do not treat `send_input` as a renamed alias of an undeclared name.
+  that Worker stays live and unsettled. `followup_task` is a live V2 declared
+  tool for later follow-up turns; the five-minute nudge uses the currently
+  declared `send_input`, and do not treat `send_input` as a renamed alias of
+  an undeclared name.
 
 This check does not authorize shutdown or takeover and is not Worker failure
 evidence. Repeat it on the same cadence; do not poll faster. If `send_input`
@@ -230,8 +233,8 @@ settled result insufficient
 
 Use live declared `send_input` to steer an existing Worker (`target` required;
 `message` or `items`). Omit `interrupt` to queue; set `interrupt=true` only for
-an explicit immediate redirect. This is the live V1 steering tool, not a
-renamed `followup_task`. Do not call `followup_task`.
+an explicit immediate redirect. This is the live V2 steering tool, not a
+renamed `followup_task`. Do not call `followup_task` for in-turn steering.
 
 Recovery may also follow a native terminal failure, a verified contract
 violation, or an explicit user change of direction. Do not trigger recovery
@@ -239,8 +242,8 @@ solely from elapsed time, token use, no artifact, reasoning duration, a wait
 timeout, or an `unsupported call`. An `unsupported call` follows the fail-fast
 rule above, not this recovery fork.
 
-Shutdown is exceptional. Current V1 declares `close_agent` for shutdown and
-does not declare `interrupt_agent`; do not call `interrupt_agent`. Use
+Shutdown is exceptional. The V2 lifecycle declares `close_agent` for shutdown;
+do not call `interrupt_agent` unless the live session explicitly declares it.
 `close_agent` only when at least one concrete condition applies:
 
 1. The user explicitly requests stop or redirection, including a second
